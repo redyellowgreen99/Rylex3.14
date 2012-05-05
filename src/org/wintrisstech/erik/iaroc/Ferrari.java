@@ -29,6 +29,7 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
     int redAndForceField = 250;
     int greenAndForceField = 246;
     int RedAndGreenAndForceField = 254;
+    int totlalDistance = 0;
     private final UltraSonicSensors ultraSonicSensors;
     private final Dashboard dashboard;
     /*
@@ -83,16 +84,6 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
         {
             try
             {
-                findIR();
-            } catch (ConnectionLostException ex)
-            {
-                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (Exception ex)
-            {
-                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            try
-            {
                 switch (mode)
                 {
                     case 0:
@@ -111,6 +102,19 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
                         backUp(100);
                         backwardDistance += getDistance();
                         break;
+                    case 4:
+                        spinLeft(30, 100);
+                        break;
+                    case 5:
+                        spinRight(30, 100);
+                        break;
+                    case 6:
+                        spinLeft(15, 100);
+                        break;
+                    case 7:
+                        spinRight(15, 100);
+                        break;
+
                 }
                 if (backwardDistance <= 0)
                 {
@@ -138,59 +142,65 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
                     backwardDistance = 250;
                 }
 
+                readSensors(SENSORS_GROUP_ID6);
+                irCode = getInfraredByte();
+                if (irCode == none)
+                {
+                    try
+                    {
+                        goForward(350);
+                        SystemClock.sleep(5000);
+                        spinLeft(360, 100);
+                    } catch (Exception ex)
+                    {
+                        Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                if (irCode == red)
+                {
+                    try
+                    {
+                        mode = 4;
+                    } catch (Exception ex)
+                    {
+                        Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                if (irCode == green)
+                {
+                    try
+                    {
+                        mode = 5;;
+                    } catch (Exception ex)
+                    {
+                        Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                if (irCode == redAndGreen)
+                {
+                    try
+                    {
+                        mode = 0;
+                    } catch (Exception ex)
+                    {
+                        Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                if (irCode == redAndForceField)
+                {
+                    mode = 6;
+                }
+                if (irCode == greenAndForceField)
+                {
+                    mode = 7;
+                }
+                if (irCode == RedAndGreenAndForceField)
+                {
+                    mode = 0;
+                }
             } catch (Exception ex)
             {
             }
-        }
-    }
-
-    public void findIR() throws ConnectionLostException, Exception
-    {
-        readSensors(SENSORS_GROUP_ID6);
-        irCode = getInfraredByte();
-        if (irCode == none)
-        {
-            try
-            {
-                spinLeft(360);
-            } catch (Exception ex)
-            {
-                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        if (irCode == red)
-        {
-            try
-            {
-                spinLeft(30);
-            } catch (Exception ex)
-            {
-                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        if (irCode == green)
-        {
-            try
-            {
-                spinRight(30);
-            } catch (Exception ex)
-            {
-                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        if (irCode == redAndGreen)
-        {
-            try
-            {
-                goForward(30);
-            } catch (Exception ex)
-            {
-                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        if (irCode == redAndForceField)
-        {
-            spinLeft(15);
         }
     }
 
@@ -457,13 +467,27 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
         }
     }
 
-    public void spinLeft(int speed) throws Exception
+    public void spinLeft(int angle, int speed) throws Exception
     {
-        driveDirect(speed, -speed);
+        readSensors(SENSORS_GROUP_ID6);
+        int currentAngle = getAngle();
+        while (currentAngle <= angle)
+        {
+            readSensors(SENSORS_GROUP_ID6);
+            currentAngle = getAngle();
+            driveDirect(speed, -speed);
+        }
     }
 
-    public void spinRight(int speed) throws Exception
+    public void spinRight(int angle, int speed) throws Exception
     {
-        driveDirect(-speed, speed);
+        readSensors(SENSORS_GROUP_ID6);
+        int currentAngle = getAngle();
+        while (currentAngle <= angle)
+        {
+            readSensors(SENSORS_GROUP_ID6);
+            currentAngle = getAngle();
+            driveDirect(-speed, speed);
+        }
     }
 }
