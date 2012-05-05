@@ -3,6 +3,7 @@ package org.wintrisstech.erik.iaroc;
 import android.os.SystemClock;
 import ioio.lib.api.IOIO;
 import ioio.lib.api.exception.ConnectionLostException;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.wintrisstech.irobot.ioio.IRobotCreateAdapter;
@@ -19,6 +20,15 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
 {
     private static final String TAG = "Ferrari";
     private int irCode = 255;
+    int none = 255;
+    int red = 248;
+    int green = 244;
+    int reserved = 240;
+    int forceField = 242;
+    int redAndGreen = 252;
+    int redAndForceField = 250;
+    int greenAndForceField = 246;
+    int RedAndGreenAndForceField = 254;
     private final UltraSonicSensors ultraSonicSensors;
     private final Dashboard dashboard;
     /*
@@ -43,6 +53,9 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
     private int column;
     private boolean running = true;
     private final static int SECOND = 1000; // number of millis in a second
+    private int mode = 0;
+    private int forwardDistance = 0;
+    private int backwardDistance = 250;
 
     /**
      * Constructs a Ferrari, an amazing machine!
@@ -66,70 +79,118 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
      */
     public void run()
     {
-        try
+        while (true)
         {
-            int fast = 100;
-            while (true)
+            try
             {
-
-                int guessAt35 = (int) (Math.random() % 35);
-                driveDirect(fast, fast);
-                dashboard.log("Running ...");
-                dashboard.log("Hello Alex!=");
-                if (isBumpRight() && isBumpLeft())
-                {
-                    driveDirect(-fast, -fast);
-                    SystemClock.sleep(700);
-                    driveDirect(fast, -fast);
-                    SystemClock.sleep(guessAt35);
-                    driveDirect(fast, fast);
-                }
-                if (isBumpLeft())
-                {
-                    driveDirect(-fast, -fast);
-                    SystemClock.sleep(100);
-                    driveDirect(-fast, fast);
-                    SystemClock.sleep(guessAt35);
-                    driveDirect(fast, fast);
-                }
-                if (isBumpRight())
-                {
-                    driveDirect(-fast, -fast);
-                    SystemClock.sleep(100);
-                    driveDirect(fast, -fast);
-                    SystemClock.sleep(guessAt35);
-                    driveDirect(fast, fast);
-                }
-
-//                if (closeToBeacon() == true)//Don't spin
-//                {
-//                    int theLoopCancel = 90;
-//                }
-
-//            Temporary Comment: Need inRed and inGreen int values
-
-//            if (inRed == true)
-//            {
-//                if (getInfraredByte() == 255)//No Singal, pointing away
-//                {
-//                    driveDirect(fast, -fast);//turn left
-//                }
-//            }
-//            if (inGreen == true)
-//            {
-//                if (getInfraredByte() == 255)//No Signal, pointing away
-//                {
-//                    driveDirect(-fast, fast);//turn right
-//                }
-//            }
+                findIR();
+            } catch (ConnectionLostException ex)
+            {
+                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (Exception ex)
+            {
+                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
             }
-//            dashboard.log("Run completed.");
-//            dashboard.log("Shutting down ...");
-//            shutDown();
-//            setRunning(false);
-        } catch (ConnectionLostException ex)
+            try
+            {
+                switch (mode)
+                {
+                    case 0:
+                        goForward(100);
+                        forwardDistance += getDistance();
+                        break;
+                    case 1:
+                        backLeft(100);
+                        backwardDistance += getDistance();
+                        break;
+                    case 2:
+                        backRight(100);
+                        backwardDistance += getDistance();
+                        break;
+                    case 3:
+                        backUp(100);
+                        backwardDistance += getDistance();
+                        break;
+                }
+                if (backwardDistance <= 0)
+                {
+                    mode = 0;
+                }
+
+                readSensors(SENSORS_GROUP_ID6);
+                if (isBumpLeft() == false && isBumpRight() == false)
+                {
+                    continue;
+                }
+                if (isBumpLeft() == true && isBumpRight() == false)
+                {
+                    mode = 1;
+                    backwardDistance = 250;
+                }
+                if (isBumpLeft() == false && isBumpRight() == true)
+                {
+                    mode = 2;
+                    backwardDistance = 250;
+                }
+                if (isBumpLeft() == true && isBumpRight() == true)
+                {
+                    mode = 3;
+                    backwardDistance = 250;
+                }
+
+            } catch (Exception ex)
+            {
+            }
+        }
+    }
+
+    public void findIR() throws ConnectionLostException, Exception
+    {
+        readSensors(SENSORS_GROUP_ID6);
+        irCode = getInfraredByte();
+        if (irCode == none)
         {
-            Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+            try
+            {
+                spinLeft(360);
+            } catch (Exception ex)
+            {
+                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        if (irCode == red)
+        {
+            try
+            {
+                spinLeft(30);
+            } catch (Exception ex)
+            {
+                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        if (irCode == green)
+        {
+            try
+            {
+                spinRight(30);
+            } catch (Exception ex)
+            {
+                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        if (irCode == redAndGreen)
+        {
+            try
+            {
+                goForward(30);
+            } catch (Exception ex)
+            {
+                Logger.getLogger(Ferrari.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        if (irCode == redAndForceField)
+        {
+            spinLeft(15);
         }
     }
 
@@ -315,5 +376,94 @@ public class Ferrari extends IRobotCreateAdapter implements Runnable
         {
             return false;
         }
+    }
+
+    /**
+     * ***********************************************************************
+     * Rylex AwesomeApi
+     * ***********************************************************************
+     */
+    public void bumpFront(int speed) throws Exception
+    {
+        readSensors(SENSORS_GROUP_ID6);
+        if (isBumpRight() && isBumpLeft())
+        {
+            System.out.println("BF");
+            backUp(speed);
+            //goNorth();
+        }
+    }
+
+    public void bumpLeft(int speed) throws Exception
+    {
+        readSensors(SENSORS_GROUP_ID6);
+        if (isBumpLeft())
+        {
+            System.out.println("BL");
+            backRight(speed);
+            //goNorth();
+        }
+    }
+
+    public void bumpRight(int speed) throws Exception
+    {
+        readSensors(SENSORS_GROUP_ID6);
+        if (isBumpRight())
+        {
+            System.out.println("BR");
+            backLeft(speed);
+            //goNorth();
+        }
+    }
+
+    public void goForward(int speed) throws Exception
+    {
+//        checkingBumps(500);
+        driveDirect(speed, speed);
+//        checkingBumps(500);
+    }
+
+    public void goBackwards(int speed) throws Exception
+    {
+        driveDirect(-speed, -speed);
+    }
+
+    public void checkingBumps(int speed) throws Exception
+    {
+        bumpRight(speed);
+        bumpLeft(speed);
+        bumpFront(speed);
+    }
+
+    public void backLeft(int speed) throws Exception//Bumped right
+    {
+        driveDirect(-speed, -speed / 3 * 2);
+    }
+
+    public void backRight(int speed) throws Exception//Bumped left
+    {
+        driveDirect(-speed / 3 * 2, -speed);
+    }
+
+    public void backUp(int speed) throws Exception//Bumped front
+    {
+        int r = new Random().nextInt(2);
+        if (r == 0)
+        {
+            backLeft(speed);
+        } else
+        {
+            backRight(speed);
+        }
+    }
+
+    public void spinLeft(int speed) throws Exception
+    {
+        driveDirect(speed, -speed);
+    }
+
+    public void spinRight(int speed) throws Exception
+    {
+        driveDirect(-speed, speed);
     }
 }
